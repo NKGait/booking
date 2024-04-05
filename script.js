@@ -9,21 +9,25 @@ app.use(express.json());
 
 // Endpoint for booking a time slot
 app.post('/book-slot', (req, res) => {
-    const { timeSlot } = req.body;
-    if (!bookings.includes(timeSlot)) {
-        bookings.push(timeSlot);
+    const { date, timeSlot } = req.body;
+    const booking = { date, timeSlot };
+    
+    // Check if the slot on this date is already booked
+    if (!bookings.some(b => b.date === date && b.timeSlot === timeSlot)) {
+        bookings.push(booking);
         res.status(200).send('Booking successful');
     } else {
-        res.status(400).send('Time slot already booked');
+        res.status(400).send('Time slot already booked for this date');
     }
 });
 
+
 app.get('/get-bookings', (req, res) => {
-    const { date } = req.query; // Assuming the date is passed as a query parameter
-    const bookingsForDate = bookings.filter(booking => booking.date === date);
-    const bookedSlots = bookingsForDate.map(booking => booking.timeSlot);
-    res.json(bookedSlots);
+    const { date } = req.query;
+    const bookingsForDate = bookings.filter(booking => booking.date === date).map(booking => booking.timeSlot);
+    res.json(bookingsForDate);
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
@@ -60,50 +64,48 @@ function selectTimeSlot(event) {
     // For example, bookSlot(selectedButton.dataset.timeSlot);
 }
 
-// Function to send a booking to the server
-function bookSlot(timeSlot) {
+function bookSlot(date, timeSlot) {
     fetch('http://localhost:3000/book-slot', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ timeSlot }),
+        body: JSON.stringify({ date, timeSlot }),
     })
     .then(response => {
         if (!response.ok) {
             throw new Error('Slot already booked or another error occurred');
         }
-        return response.text();
+        // Refresh the time slots to reflect the new booking
+        fetchBookedSlotsForDate(date);
     })
-    .then(message => {
-        console.log(message);
-        // Optionally, update your UI here to reflect the successful booking
-    })
-    .catch(error => {
-        console.error('Error booking slot:', error);
-        // Optionally, handle errors (e.g., by re-enabling the slot button and notifying the user)
-    });
+    .catch(error => console.error('Error booking slot:', error));
 }
 
+
 function fetchBookedSlotsForDate(date) {
+    // Clear previous states
+    const allSlots = document.querySelectorAll('.time-slot');
+    allSlots.forEach(slot => {
+        slot.classList.remove('booked');
+        slot.disabled = false;
+    });
+
+    // Fetch new states
     fetch(`http://localhost:3000/get-bookings?date=${date}`)
         .then(response => response.json())
         .then(bookedSlots => {
-            const allSlots = document.querySelectorAll('.time-slot');
-            allSlots.forEach(slot => {
-                // Reset all slots to unbooked state initially
-                slot.classList.remove('booked');
-                slot.disabled = false;
-
-                // Mark slot as booked if it's in the bookedSlots array
-                if (bookedSlots.includes(slot.dataset.timeSlot)) {
-                    slot.classList.add('booked');
-                    slot.disabled = true;
+            bookedSlots.forEach(slot => {
+                const slotElement = document.querySelector(`[data-time-slot="${slot}"]`);
+                if (slotElement) {
+                    slotElement.classList.add('booked');
+                    slotElement.disabled = true;
                 }
             });
         })
         .catch(error => console.error('Error fetching booked slots:', error));
 }
+
 
 // FullCalendar initialization and other necessary setup...
 var calendar = new FullCalendar.Calendar(calendarEl, {
@@ -142,20 +144,33 @@ function bookSlot(timeSlot) {
 document.getElementById('bookingForm').addEventListener('submit', function(event) {
     event.preventDefault();
 
+    // Retrieve input values
     const name = document.getElementById('name').value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;
-    const selectedTimeSlotButton = document.querySelector('.time-slot.booked:not(.disabled)');
+    const selectedTimeSlotButton = document.querySelector('.time-slot:not(.booked)');
+    const selectedDate = calendar.getDate().toISOString().split('T')[0]; // Assuming you have a FullCalendar instance named 'calendar'
 
+    // Check if a time slot is selected
     if (!selectedTimeSlotButton) {
         alert('Please select a time slot.');
         return;
     }
 
+    // Extract the time slot from the selected button
     const timeSlot = selectedTimeSlotButton.dataset.timeSlot;
 
-    alert(`Booking confirmed for ${name} at ${timeSlot}. Details will be sent to ${email} and ${phone}.`);
-
-    this.reset();
-    selectedTimeSlotButton.classList.remove('selected');
+    // Send the booking details to the server
+    bookSlot(selectedDate, timeSlot)
+        .then(() => {
+            alert(`Booking confirmed for ${name} on ${selectedDate} at ${timeSlot}. Details will be sent to ${email} and ${phone}.`);
+            // Reset form and UI state as necessary
+            this.reset();
+            fetchBookedSlotsForDate(selectedDate); // Refresh the time slots to reflect the new booking
+        })
+        .catch(error => {
+            console.error('Error booking slot:', error);
+            alert('Error booking the slot. Please try again.');
+        });
 });
+
