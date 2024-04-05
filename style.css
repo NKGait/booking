@@ -1,3 +1,4 @@
+
 /* Add to your existing styles */
 
 .time-slot {
@@ -13,4 +14,8 @@
 .time-slot.booked {
     background-color: red;
     cursor: not-allowed;
+}
+.time-slot.selected {
+    background-color: #007bff; /* Or another color to indicate selection */
+    color: white;
 }
