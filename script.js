@@ -148,8 +148,12 @@ document.getElementById('bookingForm').addEventListener('submit', function(event
     const name = document.getElementById('name').value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;
+
+    // Assuming you have a FullCalendar instance named 'calendar'
+    const selectedDate = calendar.getDate().toISOString().split('T')[0];
+
+    // Find the selected time slot button
     const selectedTimeSlotButton = document.querySelector('.time-slot:not(.booked)');
-    const selectedDate = calendar.getDate().toISOString().split('T')[0]; // Assuming you have a FullCalendar instance named 'calendar'
 
     // Check if a time slot is selected
     if (!selectedTimeSlotButton) {
@@ -164,13 +168,24 @@ document.getElementById('bookingForm').addEventListener('submit', function(event
     bookSlot(selectedDate, timeSlot)
         .then(() => {
             alert(`Booking confirmed for ${name} on ${selectedDate} at ${timeSlot}. Details will be sent to ${email} and ${phone}.`);
-            // Reset form and UI state as necessary
+            // Reset form and refresh the time slots to reflect the new booking
             this.reset();
-            fetchBookedSlotsForDate(selectedDate); // Refresh the time slots to reflect the new booking
+            fetchBookedSlotsForDate(selectedDate);
         })
         .catch(error => {
             console.error('Error booking slot:', error);
             alert('Error booking the slot. Please try again.');
         });
+
+    // Additional function needed to reset the UI of time slots
+    resetTimeSlotsUI();
 });
+
+function resetTimeSlotsUI() {
+    const timeSlots = document.querySelectorAll('.time-slot');
+    timeSlots.forEach(slot => {
+        slot.classList.remove('booked', 'selected'); // Remove 'booked' and 'selected' classes
+        slot.disabled = false; // Re-enable the button
+    });
+}
 
