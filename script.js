@@ -18,9 +18,11 @@ app.post('/book-slot', (req, res) => {
     }
 });
 
-// Endpoint to get all booked slots
 app.get('/get-bookings', (req, res) => {
-    res.json(bookings);
+    const { date } = req.query; // Assuming the date is passed as a query parameter
+    const bookingsForDate = bookings.filter(booking => booking.date === date);
+    const bookedSlots = bookingsForDate.map(booking => booking.timeSlot);
+    res.json(bookedSlots);
 });
 
 const PORT = process.env.PORT || 3000;
@@ -83,22 +85,34 @@ function bookSlot(timeSlot) {
     });
 }
 
-// Fetch booked slots and update the UI
-function fetchBookedSlots() {
-    fetch('http://localhost:3000/booked-slots')
+function fetchBookedSlotsForDate(date) {
+    fetch(`http://localhost:3000/get-bookings?date=${date}`)
         .then(response => response.json())
         .then(bookedSlots => {
-            bookedSlots.forEach(slot => {
-                const slotElement = document.querySelector(`[data-time-slot="${slot}"]`);
-                if (slotElement) {
-                    slotElement.classList.add('booked');
-                    slotElement.disabled = true;
+            const allSlots = document.querySelectorAll('.time-slot');
+            allSlots.forEach(slot => {
+                // Reset all slots to unbooked state initially
+                slot.classList.remove('booked');
+                slot.disabled = false;
+
+                // Mark slot as booked if it's in the bookedSlots array
+                if (bookedSlots.includes(slot.dataset.timeSlot)) {
+                    slot.classList.add('booked');
+                    slot.disabled = true;
                 }
             });
         })
         .catch(error => console.error('Error fetching booked slots:', error));
 }
 
+// FullCalendar initialization and other necessary setup...
+var calendar = new FullCalendar.Calendar(calendarEl, {
+    // Your FullCalendar configuration...
+    dateClick: function(info) {
+        // Fetch and display booked slots for the selected date
+        fetchBookedSlotsForDate(info.dateStr);
+    }
+});
 
 // Function to handle a new booking
 function bookSlot(timeSlot) {
