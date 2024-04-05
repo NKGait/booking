@@ -3,7 +3,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const endHour = 20;
     const timeSlotsContainer = document.getElementById('timeSlots');
 
-    // Generate time slot buttons
+    // Clear previous time slots
+    timeSlotsContainer.innerHTML = '';
+
+    // Generate and append time slot buttons
     for (let hour = startHour; hour < endHour; hour++) {
         const timeSlot = `${hour}:00 - ${hour + 1}:00`;
         const timeSlotButton = document.createElement('button');
@@ -11,11 +14,14 @@ document.addEventListener('DOMContentLoaded', function() {
         timeSlotButton.textContent = timeSlot;
         timeSlotButton.dataset.timeSlot = timeSlot;
 
-        timeSlotButton.addEventListener('click', selectTimeSlot);
+        timeSlotButton.addEventListener('click', function() {
+            selectTimeSlot(timeSlotButton);
+        });
 
         timeSlotsContainer.appendChild(timeSlotButton);
     }
 });
+
 
 // FullCalendar setup
 document.addEventListener('DOMContentLoaded', function() {
@@ -31,12 +37,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function selectTimeSlot(event) {
-    const selectedButton = event.target;
-    const selectedDate = calendar.getDate().toISOString().split('T')[0]; // Get the selected date from FullCalendar
+    // Remove 'selected' class from any previously selected time slot
+    const previouslySelected = document.querySelector('.time-slot.selected');
+    if (previouslySelected) {
+        previouslySelected.classList.remove('selected');
+    }
 
-    // Call bookSlot with the selected date and time slot
-    bookSlot(selectedDate, selectedButton.dataset.timeSlot);
+    const selectedButton = event.target;
+
+    // Add 'selected' class to the clicked time slot button
+    selectedButton.classList.add('selected');
 }
+
 
 function bookSlot(date, timeSlot) {
     fetch('http://localhost:3000/book-slot', {
@@ -82,17 +94,30 @@ function fetchBookedSlotsForDate(date) {
 document.getElementById('bookingForm').addEventListener('submit', function(event) {
     event.preventDefault();
 
+    // Retrieve form data
     const name = document.getElementById('name').value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;
-    const selectedTimeSlotButton = document.querySelector('.time-slot:not(.booked)');
+
+    // Get the selected date from FullCalendar
     const selectedDate = calendar.getDate().toISOString().split('T')[0];
+
+    // Find the selected time slot button
+    const selectedTimeSlotButton = document.querySelector('.time-slot.selected');
 
     if (!selectedTimeSlotButton) {
         alert('Please select a time slot.');
         return;
     }
 
+    // Extract the time slot from the selected button
     const timeSlot = selectedTimeSlotButton.dataset.timeSlot;
-    bookSlot(selectedDate, timeSlot);
+
+    // Call bookSlot to send the booking details to the server
+    bookSlot(selectedDate, timeSlot).then(() => {
+        // Handle successful booking, such as resetting the form and updating UI
+    }).catch(error => {
+        // Handle booking error
+        console.error('Error booking slot:', error);
+    });
 });
