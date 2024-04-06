@@ -1,12 +1,14 @@
 document.addEventListener('DOMContentLoaded', function() {
+    initializeTimeSlots();
+    initializeCalendar();
+});
+
+function initializeTimeSlots() {
     const startHour = 9;
     const endHour = 20;
     const timeSlotsContainer = document.getElementById('timeSlots');
+    timeSlotsContainer.innerHTML = ''; // Clear previous time slots
 
-    // Clear previous time slots
-    timeSlotsContainer.innerHTML = '';
-
-    // Generate and append time slot buttons
     for (let hour = startHour; hour < endHour; hour++) {
         const timeSlot = `${hour}:00 - ${hour + 1}:00`;
         const timeSlotButton = document.createElement('button');
@@ -15,16 +17,14 @@ document.addEventListener('DOMContentLoaded', function() {
         timeSlotButton.dataset.timeSlot = timeSlot;
 
         timeSlotButton.addEventListener('click', function() {
-            selectTimeSlot(timeSlotButton);
+            selectTimeSlot(timeSlotButton); // Pass the button itself
         });
 
         timeSlotsContainer.appendChild(timeSlotButton);
     }
-});
+}
 
-
-// FullCalendar setup
-document.addEventListener('DOMContentLoaded', function() {
+function initializeCalendar() {
     var calendarEl = document.getElementById('calendar');
     var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
@@ -34,24 +34,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     calendar.render();
-});
+}
 
-function selectTimeSlot(event) {
-    // Remove 'selected' class from any previously selected time slot
-    const previouslySelected = document.querySelector('.time-slot.selected');
-    if (previouslySelected) {
-        previouslySelected.classList.remove('selected');
-    }
-
-    const selectedButton = event.target;
-
-    // Add 'selected' class to the clicked time slot button
-
-        document.querySelectorAll('.time-slot.selected').forEach(btn => btn.classList.remove('selected'));
+function selectTimeSlot(selectedButton) {
+    document.querySelectorAll('.time-slot.selected').forEach(btn => btn.classList.remove('selected'));
     selectedButton.classList.add('selected');
 }
-}
-
 
 function bookSlot(date, timeSlot) {
     fetch('http://localhost:3000/book-slot', {
@@ -65,21 +53,15 @@ function bookSlot(date, timeSlot) {
         if (!response.ok) {
             throw new Error('Slot already booked or another error occurred');
         }
-        // Refresh the time slots to reflect the new booking
-        fetchBookedSlotsForDate(date);
+        fetchBookedSlotsForDate(date); // Refresh the time slots to reflect the new booking
     })
     .catch(error => console.error('Error booking slot:', error));
 }
 
 function fetchBookedSlotsForDate(date) {
-    // Clear previous states
     const allSlots = document.querySelectorAll('.time-slot');
-    allSlots.forEach(slot => {
-        slot.classList.remove('booked');
-        slot.disabled = false;
-    });
+    allSlots.forEach(slot => slot.classList.remove('booked', 'selected')); // Reset
 
-    // Fetch new states
     fetch(`http://localhost:3000/get-bookings?date=${date}`)
         .then(response => response.json())
         .then(bookedSlots => {
@@ -96,16 +78,10 @@ function fetchBookedSlotsForDate(date) {
 
 document.getElementById('bookingForm').addEventListener('submit', function(event) {
     event.preventDefault();
-
-    // Retrieve form data
     const name = document.getElementById('name').value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;
-
-    // Get the selected date from FullCalendar
     const selectedDate = calendar.getDate().toISOString().split('T')[0];
-
-    // Find the selected time slot button
     const selectedTimeSlotButton = document.querySelector('.time-slot.selected');
 
     if (!selectedTimeSlotButton) {
@@ -116,9 +92,8 @@ document.getElementById('bookingForm').addEventListener('submit', function(event
     const timeSlot = selectedTimeSlotButton.dataset.timeSlot;
     bookSlot(selectedDate, timeSlot).then(() => {
         alert(`Booking confirmed for ${name} on ${selectedDate} at ${timeSlot}.`);
-        // Consider resetting the form and updating the UI here
-        this.reset();
-        fetchBookedSlotsForDate(selectedDate); // Refresh time slots to reflect the new booking
+        document.getElementById('bookingForm').reset(); // Reset form
+        fetchBookedSlotsForDate(selectedDate); // Refresh time slots
     }).catch(error => {
         console.error('Error booking slot:', error);
         alert('Error booking the slot. Please try again.');
