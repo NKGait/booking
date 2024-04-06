@@ -27,11 +27,21 @@ function initializeTimeSlots() {
 function initializeCalendar() {
     var calendarEl = document.getElementById('calendar');
     var calendar = new FullCalendar.Calendar(calendarEl, {
-        // FullCalendar configuration remains the same...
+        initialView: 'dayGridMonth',
+        firstDay: 1, // Set Monday as the first day of the week
+
         dateClick: function(info) {
-            fetchBookedSlotsForDate(info.dateStr);
-            // Optionally move to time slot selection after fetching booked slots
-            showTimeSlotSelection(); // Call this after booked slots are fetched and updated
+            // Save the selected date for later use, e.g., in a global variable or hidden form input
+            window.selectedDate = info.dateStr; // Example of storing in a global variable
+
+            // Fetch booked slots for the selected date and then show the time slot selection
+            fetchBookedSlotsForDate(info.dateStr).then(() => {
+                // Ensure time slots are updated before moving to the time slot selection
+                showTimeSlotSelection();
+            }).catch(error => {
+                console.error('Error fetching booked slots:', error);
+                alert('Failed to fetch booked slots. Please try again.');
+            });
         }
     });
     calendar.render();
