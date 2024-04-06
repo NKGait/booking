@@ -1,6 +1,8 @@
+let calendarInitialized = false; // Flag to check if the calendar has been initialized
+
 document.addEventListener('DOMContentLoaded', function() {
     initializeTimeSlots();
-    initializeCalendar();
+    // Delay the calendar initialization to when it's actually needed
 });
 
 function initializeTimeSlots() {
@@ -15,120 +17,90 @@ function initializeTimeSlots() {
         timeSlotButton.classList.add('time-slot');
         timeSlotButton.textContent = timeSlot;
         timeSlotButton.dataset.timeSlot = timeSlot;
-
-        timeSlotButton.addEventListener('click', function() {
-            selectTimeSlot(timeSlotButton); // Pass the button itself
-        });
-
+        timeSlotButton.addEventListener('click', function() { selectTimeSlot(timeSlotButton); });
         timeSlotsContainer.appendChild(timeSlotButton);
     }
 }
 
 function initializeCalendar() {
+    if (calendarInitialized) return; // Prevent re-initialization
+
     var calendarEl = document.getElementById('calendar');
     var calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
-        firstDay: 1, // Set Monday as the first day of the week
-
+        firstDay: 1,
         dateClick: function(info) {
-            // Save the selected date for later use, e.g., in a global variable or hidden form input
-            window.selectedDate = info.dateStr; // Example of storing in a global variable
-
-            // Fetch booked slots for the selected date and then show the time slot selection
-            fetchBookedSlotsForDate(info.dateStr).then(() => {
-                // Ensure time slots are updated before moving to the time slot selection
-                showTimeSlotSelection();
-            }).catch(error => {
-                console.error('Error fetching booked slots:', error);
-                alert('Failed to fetch booked slots. Please try again.');
-            });
+            document.getElementById('selectedDate').value = info.dateStr; // Use a hidden input to store the selected date
+            fetchBookedSlotsForDate(info.dateStr).then(showTimeSlotSelection)
+                .catch(error => alert('Failed to fetch booked slots. Please try again.'));
         }
     });
     calendar.render();
+    calendarInitialized = true;
 }
 
-
 function showDateSelection() {
-    // User details validation logic can be added here...
     document.getElementById('userDetailsSection').style.display = 'none';
     document.getElementById('dateSelectionSection').style.display = 'block';
-    initializeCalendar(); // Initialize FullCalendar when moving to the date selection step
+    if (!calendarInitialized) initializeCalendar();
 }
 
 function showTimeSlotSelection() {
     document.getElementById('dateSelectionSection').style.display = 'none';
     document.getElementById('timeSlotSelectionSection').style.display = 'block';
-    // Ensure time slots are refreshed for the selected date here
-    // This can be done by calling `fetchBookedSlotsForDate(selectedDate)` if `selectedDate` is globally stored
+    // Refresh time slots for the selected date
+    const selectedDate = document.getElementById('selectedDate').value;
+    fetchBookedSlotsForDate(selectedDate);
 }
 
-
-function bookSlot(date, timeSlot) {
-    fetch('http://localhost:3000/book-slot', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ date, timeSlot }),
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Slot already booked or another error occurred');
-        }
-        fetchBookedSlotsForDate(date); // Refresh the time slots to reflect the new booking
-    })
-    .catch(error => console.error('Error booking slot:', error));
+function selectTimeSlot(selectedButton) {
+    document.querySelectorAll('.time-slot.selected').forEach(btn => btn.classList.remove('selected'));
+    selectedButton.classList.add('selected');
 }
 
 function fetchBookedSlotsForDate(date) {
-    const allSlots = document.querySelectorAll('.time-slot');
-    allSlots.forEach(slot => slot.classList.remove('booked', 'selected')); // Reset
-
-    // Optional: Show loading state here, e.g., timeSlotsContainer.textContent = 'Loading...';
-
-    fetch(`http://localhost:3000/get-bookings?date=${date}`)
+    return fetch(`http://localhost:3000/get-bookings?date=${date}`)
         .then(response => {
             if (!response.ok) throw new Error('Failed to fetch');
             return response.json();
         })
-        .then(bookedSlots => {
-            // Optional: Hide loading state here
-            bookedSlots.forEach(slot => {
-                const slotElement = document.querySelector(`[data-time-slot="${slot}"]`);
-                if (slotElement) {
-                    slotElement.classList.add('booked');
-                    slotElement.disabled = true;
-                }
-            });
-        })
-        .catch(error => {
-            console.error('Error fetching booked slots:', error);
-            alert('Failed to fetch booked slots. Please try again.');
-            // Optional: Update UI to show an error message or retry option
-        });
+        .then(bookedSlots => updateBookedSlotsUI(bookedSlots))
+        .catch(error => console.error('Error fetching booked slots:', error));
 }
 
+function updateBookedSlotsUI(bookedSlots) {
+    const allSlots = document.querySelectorAll('.time-slot');
+    allSlots.forEach(slot => {
+        slot.classList.remove('booked', 'selected');
+        slot.disabled = bookedSlots.includes(slot.dataset.timeSlot);
+        if (slot.disabled) slot.classList.add('booked');
+    });
+}
 
 document.getElementById('bookingForm').addEventListener('submit', function(event) {
     event.preventDefault();
     const name = document.getElementById('name').value;
     const email = document.getElementById('email').value;
     const phone = document.getElementById('phone').value;
-    const selectedDate = calendar.getDate().toISOString().split('T')[0];
+    const selectedDate = document.getElementById('selectedDate').value;
     const selectedTimeSlotButton = document.querySelector('.time-slot.selected');
-
-    if (!selectedTimeSlotButton) {
-        alert('Please select a time slot.');
-        return;
-    }
-
+    if (!selectedTimeSlotButton) { alert('Please select a time slot.'); return; }
     const timeSlot = selectedTimeSlotButton.dataset.timeSlot;
+
     bookSlot(selectedDate, timeSlot).then(() => {
         alert(`Booking confirmed for ${name} on ${selectedDate} at ${timeSlot}.`);
-        document.getElementById('bookingForm').reset(); // Reset form
-        fetchBookedSlotsForDate(selectedDate); // Refresh time slots
-    }).catch(error => {
-        console.error('Error booking slot:', error);
-        alert('Error booking the slot. Please try again.');
-    });
+        document.getElementById('bookingForm').reset();
+        showDateSelection(); // Optionally, redirect the user to the date selection for a new booking
+    }).catch(error => alert('Error booking the slot. Please try again.'));
 });
+
+function bookSlot(date, timeSlot) {
+    return fetch('http://localhost:3000/book-slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, timeSlot })
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Slot already booked or another error occurred');
+    });
+}
