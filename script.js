@@ -84,9 +84,15 @@ function fetchBookedSlotsForDate(date) {
     const allSlots = document.querySelectorAll('.time-slot');
     allSlots.forEach(slot => slot.classList.remove('booked', 'selected')); // Reset
 
+    // Optional: Show loading state here, e.g., timeSlotsContainer.textContent = 'Loading...';
+
     fetch(`http://localhost:3000/get-bookings?date=${date}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch');
+            return response.json();
+        })
         .then(bookedSlots => {
+            // Optional: Hide loading state here
             bookedSlots.forEach(slot => {
                 const slotElement = document.querySelector(`[data-time-slot="${slot}"]`);
                 if (slotElement) {
@@ -95,8 +101,13 @@ function fetchBookedSlotsForDate(date) {
                 }
             });
         })
-        .catch(error => console.error('Error fetching booked slots:', error));
+        .catch(error => {
+            console.error('Error fetching booked slots:', error);
+            alert('Failed to fetch booked slots. Please try again.');
+            // Optional: Update UI to show an error message or retry option
+        });
 }
+
 
 document.getElementById('bookingForm').addEventListener('submit', function(event) {
     event.preventDefault();
