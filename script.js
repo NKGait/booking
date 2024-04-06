@@ -36,10 +36,18 @@ function initializeCalendar() {
     calendar.render();
 }
 
-function selectTimeSlot(selectedButton) {
-    document.querySelectorAll('.time-slot.selected').forEach(btn => btn.classList.remove('selected'));
-    selectedButton.classList.add('selected');
+function showDateSelection() {
+    // Validate user details if necessary
+    document.getElementById('userDetailsSection').style.display = 'none';
+    document.getElementById('dateSelectionSection').style.display = 'block';
 }
+
+function showTimeSlotSelection() {
+    document.getElementById('dateSelectionSection').style.display = 'none';
+    document.getElementById('timeSlotSelectionSection').style.display = 'block';
+    // Trigger fetching of time slots for the selected date here
+}
+
 
 function bookSlot(date, timeSlot) {
     fetch('http://localhost:3000/book-slot', {
