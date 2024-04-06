@@ -27,25 +27,29 @@ function initializeTimeSlots() {
 function initializeCalendar() {
     var calendarEl = document.getElementById('calendar');
     var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'dayGridMonth',
-        firstDay: 1, // Monday as the first day of the week
+        // FullCalendar configuration remains the same...
         dateClick: function(info) {
             fetchBookedSlotsForDate(info.dateStr);
+            // Optionally move to time slot selection after fetching booked slots
+            showTimeSlotSelection(); // Call this after booked slots are fetched and updated
         }
     });
     calendar.render();
 }
 
+
 function showDateSelection() {
-    // Validate user details if necessary
+    // User details validation logic can be added here...
     document.getElementById('userDetailsSection').style.display = 'none';
     document.getElementById('dateSelectionSection').style.display = 'block';
+    initializeCalendar(); // Initialize FullCalendar when moving to the date selection step
 }
 
 function showTimeSlotSelection() {
     document.getElementById('dateSelectionSection').style.display = 'none';
     document.getElementById('timeSlotSelectionSection').style.display = 'block';
-    // Trigger fetching of time slots for the selected date here
+    // Ensure time slots are refreshed for the selected date here
+    // This can be done by calling `fetchBookedSlotsForDate(selectedDate)` if `selectedDate` is globally stored
 }
 
 
