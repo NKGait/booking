@@ -46,7 +46,10 @@ function selectTimeSlot(event) {
     const selectedButton = event.target;
 
     // Add 'selected' class to the clicked time slot button
+
+        document.querySelectorAll('.time-slot.selected').forEach(btn => btn.classList.remove('selected'));
     selectedButton.classList.add('selected');
+}
 }
 
 
@@ -110,14 +113,14 @@ document.getElementById('bookingForm').addEventListener('submit', function(event
         return;
     }
 
-    // Extract the time slot from the selected button
     const timeSlot = selectedTimeSlotButton.dataset.timeSlot;
-
-    // Call bookSlot to send the booking details to the server
     bookSlot(selectedDate, timeSlot).then(() => {
-        // Handle successful booking, such as resetting the form and updating UI
+        alert(`Booking confirmed for ${name} on ${selectedDate} at ${timeSlot}.`);
+        // Consider resetting the form and updating the UI here
+        this.reset();
+        fetchBookedSlotsForDate(selectedDate); // Refresh time slots to reflect the new booking
     }).catch(error => {
-        // Handle booking error
         console.error('Error booking slot:', error);
+        alert('Error booking the slot. Please try again.');
     });
 });
