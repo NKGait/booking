@@ -1,4 +1,3 @@
-
 /* Add to your existing styles */
 
 .time-slot {
@@ -9,13 +8,30 @@
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.time-slot:hover, .time-slot:focus {
+    transform: scale(1.05); /* Slightly enlarges the button on hover/focus */
+}
+
+.time-slot:focus-visible {
+    outline: 2px solid #fff; /* Adds a white outline for keyboard-only focus */
 }
 
 .time-slot.booked {
     background-color: red;
     cursor: not-allowed;
 }
+
 .time-slot.selected {
     background-color: #007bff; /* Or another color to indicate selection */
     color: white;
+}
+
+@media (max-width: 600px) {
+    .time-slot {
+        padding: 8px; /* Slightly smaller padding on smaller screens */
+        margin: 3px;
+    }
 }
